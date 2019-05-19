@@ -1,0 +1,2 @@
+[Service]
+Environment="HTTP_PROXY=http://172.17.165.212:8118/" "HTTPS_PROXY=http://172.17.165.212:8118/" "NO_PROXY=localhost,127.0.0.1"

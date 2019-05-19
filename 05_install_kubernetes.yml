@@ -1,0 +1,40 @@
+---
+- hosts: all
+  tasks:
+  - name: Add kubernetes repository
+    yum_repository:
+      name: kubernetes
+      description: Kubernetes
+      baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+      gpgcheck: yes
+      repo_gpgcheck: yes
+      gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+      exclude: kube*
+      proxy: socks5h://172.17.165.212:1080
+  - name: Switch selinux to permissive mode
+    selinux:
+      policy: targeted
+      state: permissive
+  - name: Ensure that ip6tables is not bypassed
+    sysctl:
+      name: net.bridge.bridge-nf-call-ip6tables
+      value: "1"
+  - name: Ensure that iptables is not bypassed
+    sysctl:
+      name: net.bridge.bridge-nf-call-iptables
+      value: "1"
+  - name: Install kubernetes tools
+    yum:
+      name: "{{ packages }}"
+      state: latest
+      disable_excludes: kubernetes
+    vars:
+      packages:
+      - kubelet
+      - kubeadm
+      - kubectl
+  - name: Start kubelet
+    systemd:
+      name: kubelet
+      state: started
+      enabled: yes

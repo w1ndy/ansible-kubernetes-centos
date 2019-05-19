@@ -1,0 +1,26 @@
+---
+- hosts: all
+  tasks:
+    - name: "Enable internal zone"
+      firewalld: zone="internal" state=enabled permanent=yes
+    - name: "Add eth0 to internal zone"
+      firewalld: zone="internal" interface="eth0" state=enabled permanent=yes
+    - name: "Open 8285 port for flannel"
+      firewalld: zone="internal" port="8285/udp" state=enabled permanent=yes
+    - name: "Open 8472 port for flannel"
+      firewalld: zone="internal" port="8472/udp" state=enabled permanent=yes
+    - name: "Open 6443 port on masters"
+      firewalld: zone="internal" port="6443/tcp" state=enabled permanent=yes
+      when: "'masters' in group_names"
+    - name: "Open 2379-2380 port on masters"
+      firewalld: zone="internal" port="2379-2380/tcp" state=enabled permanent=yes
+      when: "'masters' in group_names"
+    - name: "Open 10250-10252 port on masters"
+      firewalld: zone="internal" port="10250-10252/tcp" state=enabled permanent=yes
+      when: "'masters' in group_names"
+    - name: "Open 10250 port on workers"
+      firewalld: zone="internal" port="10250/tcp" state=enabled permanent=yes
+      when: "'workers' in group_names"
+    - name: "Open 30000-32767 port on workers"
+      firewalld: zone="internal" port="30000-32767/tcp" state=enabled permanent=yes
+      when: "'workers' in group_names"

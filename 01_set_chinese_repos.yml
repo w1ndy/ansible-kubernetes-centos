@@ -1,0 +1,13 @@
+---
+- hosts: all
+  tasks:
+    - find:
+        paths: "/etc/yum.repos.d/"
+        patterns: "*.repo"
+      register: repo
+    - lineinfile: dest={{ item.path }} regexp="mirrorlist" state=absent
+      with_items: "{{ repo.files }}"
+    - replace: path={{ item.path }} regexp="^#base" replace="base"
+      with_items: "{{ repo.files }}"
+    - replace: path={{ item.path }} regexp="mirror\.centos\.org" replace="mirrors.tuna.tsinghua.edu.cn"
+      with_items: "{{ repo.files }}"

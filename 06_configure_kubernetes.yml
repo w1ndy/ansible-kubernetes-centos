@@ -1,0 +1,60 @@
+---
+- hosts: all
+  tasks:
+  - name: Check version
+    shell: kubeadm version | grep -Po "v\d+\.\d+\.\d+(?=\")"
+    register: version
+  - name: Pull images
+    command: kubeadm config images pull
+
+  - name: Check master kubernetes installation
+    command: kubectl get cs
+    register: master_k8s_installed
+    when:
+    - "'masters' in group_names"
+    ignore_errors: True
+  - name: Configure the master node with kubeadm
+    command: kubeadm init --pod-network-cidr=10.244.0.0/16 --kubernetes-version "{{ version.stdout_lines.0 }}"
+    when:
+    - "'masters' in group_names"
+    - master_k8s_installed is failed
+  - name: Initialize local configuration on the master node
+    shell: mkdir -p $HOME/.kube && cp -i /etc/kubernetes/admin.conf $HOME/.kube/config && chown $(id -u):$(id -g) $HOME/.kube/config
+    when:
+    - "'masters' in group_names"
+    - master_k8s_installed is failed
+
+  - name: Check flannel installation
+    shell: kubectl get pods -n kube-system | grep flannel
+    register: master_flannel_installed
+    when:
+    - "'masters' in group_names"
+    ignore_errors: True
+  - name: Install flannel
+    command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+    when:
+    - "'masters' in group_names"
+    - master_flannel_installed is failed
+
+  - name: Get kubeadm join token
+    shell: kubeadm token list | grep -Po "^[a-z0-9\.]+"
+    register: kubeadm_token
+    when:
+    - "'masters' in group_names"
+  - name: Get CA cert hash
+    shell: openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | openssl dgst -sha256 -hex | sed 's/^.* //'
+    register: kubeadm_ca_hash
+    when:
+    - "'masters' in group_names"
+
+  - name: Check worker kubernetes installation
+    command: kubectl get cs
+    register: worker_k8s_installed
+    when:
+    - "'workers' in group_names"
+    ignore_errors: True
+  - name: Join workers
+    command: kubeadm join --token {{ hostvars['master.k8s.dev'].kubeadm_token.stdout }} master.k8s.dev:6443 --discovery-token-ca-cert-hash sha256:{{ hostvars['master.k8s.dev'].kubeadm_ca_hash.stdout }}
+    when:
+    - "'workers' in group_names"
+    - worker_k8s_installed is failed

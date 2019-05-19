@@ -1,0 +1,44 @@
+---
+- hosts: all
+  tasks:
+  - name: Add docker-ce stable repository
+    yum_repository:
+      name: docker-ce-stable
+      description: Docker CE Stable - $basearch
+      baseurl: https://download.docker.com/linux/centos/7/$basearch/stable
+      gpgcheck: yes
+      gpgkey: https://download.docker.com/linux/centos/gpg
+      proxy: socks5h://172.17.165.212:1080
+  - name: Install docker
+    yum:
+      name: "{{ packages }}"
+      state: latest
+    vars:
+      packages:
+      - device-mapper-persistent-data
+      - lvm2
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+  - name: Create override directory for docker service
+    file:
+      path: /etc/systemd/system/docker.service.d
+      state: directory
+  - name: Setup proxy for pulling images
+    copy:
+      src: ./resources/docker-override.service
+      dest: /etc/systemd/system/docker.service.d/override.conf
+  - name: Create docker configuration directory
+    file:
+      path: /etc/docker
+      state: directory
+  - name: Change cgroup driver to systemd
+    copy:
+      src: ./resources/docker-daemon.json
+      dest: /etc/docker/daemon.json
+  - name: Restart and enable docker
+    service:
+      daemon_reload: yes
+      name: docker
+      state: restarted
+      enabled: yes
