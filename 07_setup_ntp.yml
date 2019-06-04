@@ -1,0 +1,17 @@
+---
+- hosts: all
+  tasks:
+  - name: Install ntp
+    yum:
+      name: "ntp"
+      state: latest
+  - name: Set ntp server
+    lineinfile:
+      dest: /etc/ntp.conf
+      line: server ntp.tuna.tsinghua.edu.cn
+      insertbefore: BOF
+  - name: Enable and start service
+    systemd:
+      name: ntpd
+      state: started
+      enabled: yes
